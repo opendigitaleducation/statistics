@@ -3,21 +3,54 @@ import { StatsResponse } from "./stats-api.service";
 
 export class DateService {
 
-    public getMonthLabels(data: Array<StatsResponse>) {
-		const labels: Array<string> = [];
-		
+	public getDatesFromData(data: Array<StatsResponse>): Array<Date> {
+		let dateArray: Array<Date> = [];
 		data.forEach(d => {
 			const date = new Date(d.date);
-			const dateToLocalString: string = date.toLocaleString('default', { month: '2-digit', year: '2-digit' });
-			if (!labels.includes(dateToLocalString)) {
-				labels.push(dateToLocalString);
+			if (!dateArray.find(x => x.getTime() === date.getTime())) {
+				dateArray.push(date);
 			}
 		});
+		return dateArray;
+	}
+	
+	public getMinDateFromData(data: Array<StatsResponse>): Date {
+		return new Date(data.reduce((a, b) => new Date(a.date) < new Date(b.date) ? a : b).date);
+	}
+	
+	public getMaxDateFromData(data: Array<StatsResponse>): Date {
+		return new Date(data.reduce((a, b) => new Date(a.date) > new Date(b.date) ? a : b).date);
+	}
+	
+	public getDates(minDate: Date, maxDate: Date): Array<Date> {
+		let datesArray: Array<Date> = [];
+		let resDate = minDate;
+		datesArray.push(new Date(resDate));
 		
-		return labels;
+		while (resDate < maxDate) {
+			resDate.setMonth(resDate.getMonth() + 1);
+			datesArray.push(new Date(resDate));
+		}
+		return datesArray;
+	}
+	
+	public getMonthLabelsFromData(data: Array<StatsResponse>): Array<string> {
+		let dateLabelsArray: Array<string> = [];
+		data.forEach(d => {
+			const date = new Date(d.date);
+			const dateToLocalString: string = date.toLocaleString([currentLanguage], { month: 'long', year: '2-digit' });
+			if (!dateLabelsArray.find(chartLabel => chartLabel === dateToLocalString)) {
+				dateLabelsArray.push(dateToLocalString);
+			}
+		});
+		return dateLabelsArray;
+	}
+	
+	public getMonthLabels(dates: Array<Date>): Array<string> {
+		return dates.map(d => d.toLocaleString([currentLanguage], { month: 'long', year: '2-digit' }));
 	}
 
-	public getWeekLabels(data: Array<StatsResponse>) {	
+	public getWeekLabelsFromData(data: Array<StatsResponse>) {	
 		const labels: Array<string> = [];
 		
 		data.forEach(d => {
@@ -26,7 +59,7 @@ export class DateService {
 			const weekLabel = lang.translate("stats.weekOf") 
 				+ firstDayOfTheWeek 
 				+ '/' 
-				+ date.toLocaleString('default', { month: '2-digit' })
+				+ date.toLocaleString([currentLanguage], { month: '2-digit' })
 			if (!labels.includes(weekLabel)) {
 				labels.push(weekLabel);
 			}
@@ -35,12 +68,12 @@ export class DateService {
 		return labels;
 	}
 
-	public getDayLabels(data: Array<StatsResponse>) {
+	public getDayLabelsFromData(data: Array<StatsResponse>) {
 		const labels: Array<string> = [];
 		
 		data.forEach(d => {
 			const date = new Date(d.date);
-			const dateToLocalString: string = date.toLocaleString('default', { day: '2-digit', month: '2-digit', year: 'numeric' });
+			const dateToLocalString: string = date.toLocaleString([currentLanguage], { day: '2-digit', month: '2-digit', year: 'numeric' });
 			if (!labels.includes(dateToLocalString)) {
 				labels.push(dateToLocalString);
 			}
@@ -59,7 +92,7 @@ export class DateService {
 	}
 	
     public getSinceDateLabel(): string {
-	    return lang.translate("stats.since") + this.getSinceDate().toLocaleString([currentLanguage], {month: "long", year: "numeric"});
+	    return this.getSinceDate().toLocaleString('default', {month: "long", year: "numeric"});
     }
 	
 	public moreThanOneHourAgo(date: Date): boolean {

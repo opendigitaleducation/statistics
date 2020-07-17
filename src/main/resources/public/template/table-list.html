@@ -14,7 +14,7 @@
                     <a ng-click="openIndicator(indicator)" style="margin: 0px 0px 5px 0px" ng-class="{ selected: currentIndicator === indicator }">
                         <h1 class="indicator-number">[[getAggregatedValue(indicator, scopeEntity.current)]]</h1>
     					<div class="indicator-name">[[lang.translate(indicator.name)]]</div>
-                        <div class="indicator-since">[[lang.translate(indicator.since)]]</div>
+                        <div class="indicator-since"><i18n>stats.since</i18n> [[lang.translate(indicator.since)]]</div>
                     </a>
 				</li>
 			</ul>
@@ -33,7 +33,7 @@
         </div>
 
         <!-- Information -->
-        <h2>[[currentIndicator.chartTitle]]</h2>
+        <h2>[[lang.translate(currentIndicator.chartTitle)]]</h2>
 
         <!-- Specific to profile bar charts, group by profile -->
         <div class="chart-profilecriteria-container" ng-if="currentIndicator.name === 'stats.mostUsedTool'">

@@ -1,5 +1,4 @@
-import { ChartType, Frequency, ChartData } from "../services/chart.service";
-import { Entity } from "../services/entities.service";
+import { Frequency, ChartType } from "../services/chart.service";
 
 export type IndicatorApi = 'accounts' | 'access';
 export type IndicatorApiType = 
@@ -11,7 +10,7 @@ export type IndicatorApiType =
     // but is a calculation of 2 indicators data (for example: ConnectionsDividedByUniqueVisitors)
     'mixed';
 
-export abstract class Indicator {
+export type Indicator = {
     name: string;
     api: IndicatorApi;
     apiType: IndicatorApiType;
@@ -20,9 +19,7 @@ export abstract class Indicator {
     icon: string;
     chartType: ChartType;
     chartTitle: string;
-    chartFrequencies: Array<Frequency>;
-    chartProfile: string;
-    
-    abstract getChartLabels(entity: Entity): Promise<Array<string>>;
-    abstract getChartData(entity: Entity): Promise<ChartData>;
-}
+    chartFrequencies?: Array<Frequency>;
+    chartProfile?: string;
+    chartProfiles?: Array<string>;
+};

@@ -1,20 +1,15 @@
 import { ng, template, ui, _, $, idiom as lang } from 'entcore';
 
-import { ConnectionIndicator } from './indicators/line/connections.indicator';
 import { Indicator, IndicatorApi } from './indicators/indicator';
-import { UniqueVisitorsIndicator } from './indicators/line/unique-visitors.indicator';
-import { ConnectionsDividedUniqueVisitorsIndicator } from './indicators/line/connections-unique-visitors.indicator';
-import { MostUsedToolIndicator } from './indicators/bar/most-used-tool.indicator';
-import { ConnectionsDailyPeakIndicator } from './indicators/stackedbar/connections-daily-peak.indicator';
-import { ConnectionsWeeklyPeakIndicator } from './indicators/stackedbar/connections-weekly-peak.indicator';
-import { ActivationIndicator } from './indicators/line/activation.indicator';
-import { chartService, Frequency, ChartDataGroupedByProfile } from './services/chart.service';
-import { StatsResponse } from './services/stats-api.service';
+import { chartService } from './services/chart.service';
 import { dateService } from './services/date.service';
 import { Entity } from './services/entities.service';
-import { statsApiService } from './services/stats-api.service';
 import { entitiesService } from './services/entities.service';
 import { cacheService } from './services/cache.service';
+import { indicatorService } from './services/indicator.service';
+import { connectionsIndicator, uniqueVisitorsIndicator, connectionsUniqueVisitorsIndicator, activationIndicator } from './indicators/line.indicators';
+import { mostUsedToolIndicator } from './indicators/bar.indicators';
+import { connectionsDailyPeakIndicator, connectionsWeeklyPeakIndicator } from './indicators/stackedbar.indicators';
 
 declare const Chart: any;
 
@@ -93,236 +88,22 @@ export const statsController = ng.controller('StatsController', ['$scope', '$tim
 	
 	/**** LIST OF INDICATORS ****/
 	$scope.indicators = [
-		/* CONNECTIONS */
-		new ConnectionIndicator(),
-		/* UNIQUE VISITORS */
-		new UniqueVisitorsIndicator(),
-		/* CONNECTIONS DIVIDED BY UNIQUE VISITORS*/
-		new ConnectionsDividedUniqueVisitorsIndicator(),
-		/* MOST USED TOOLS */
-		new MostUsedToolIndicator(),
-		/* CONNECTIONS - DAILY PEAK */
-		new ConnectionsDailyPeakIndicator(),
-		/* CONNECTIONS - WEEKLY PEAK */
-		new ConnectionsWeeklyPeakIndicator(),
-		/* NUMBER OF ACTIVATED ACCOUNTS */
-		new ActivationIndicator()
+		connectionsIndicator,
+		uniqueVisitorsIndicator,
+		connectionsUniqueVisitorsIndicator,
+		mostUsedToolIndicator,
+		connectionsDailyPeakIndicator,
+		connectionsWeeklyPeakIndicator,
+		activationIndicator
 	];
 	
 	/**** INIT Data ****/
-	let initEntityMonthCacheData = async (entity: Entity): Promise<void> => {
-		// get accounts data from API
-		let accountsData: Array<StatsResponse> = await statsApiService.getStats(
-			'accounts',
-			dateService.getSinceDateISOStringWithoutMs(),
-			'month',
-			entity.level,
-			[entity.id]
-		);
-		// get accessData from API
-		let accessData: Array<StatsResponse> = await statsApiService.getStats(
-			'access',
-			dateService.getSinceDateISOStringWithoutMs(),
-			'month',
-			entity.level,
-			[entity.id]
-		);
-		// initialize entity cache data
-		entity.cacheData = {
-			indicators: [],
-			lastUpdate: null
-		};
-		// for each indicator, calculate total value and fill entity cache with data
-		$scope.indicators.forEach(indicator => {
-			let data: Array<StatsResponse> = [];
-			if (indicator.api === 'accounts') {
-				data = accountsData;
-			} else if (indicator.api === 'access') {
-				data = accessData;
-			}
-			
-			let total: number = 0;
-			if (indicator.apiType !== 'mixed' && indicator.name !== 'stats.mostUsedTool') {
-				data.forEach(d => total += d[indicator.apiType]);
-			}
-			
-			let cacheIndicator = {
-				name: indicator.name,
-				apiType: indicator.apiType,
-				data: data,
-				frequency: 'month' as Frequency,
-				totalValue: total
-			};
-			entity.cacheData.lastUpdate = new Date();
-			entity.cacheData.indicators.push(cacheIndicator);
-			$scope.$apply();
-		});
-	}
-	
-	/**** Init Total Value for specific indicators ****/
-	
-	let initConnectionsDividedUniqueVisitorsTotalValue = (entity: Entity) => {
-		let authenticationsTotalValue = 0;
-		const authenticationsCacheIndicator = entity.cacheData.indicators.find(indicator => indicator.name === 'stats.connections');
-		if (authenticationsCacheIndicator) {
-			authenticationsTotalValue = authenticationsCacheIndicator.totalValue as number;
-		}
-		let uniqueVisitorsTotalValue = 0;
-		const uniqueVisitorsCacheIndicator = entity.cacheData.indicators.find(indicator => indicator.name === 'stats.uniqueVisitors');
-		if (uniqueVisitorsCacheIndicator) {
-			uniqueVisitorsTotalValue = uniqueVisitorsCacheIndicator.totalValue as number;
-		}
-		
-		if (uniqueVisitorsTotalValue > 0) {
-			const connectionsDividedUniqueVisitorsTotalValue = Math.round((authenticationsTotalValue / uniqueVisitorsTotalValue) * 100) / 100;
-			const connectionsDividedUniqueVisitorsCacheIndicator = entity.cacheData.indicators.find(indicator => indicator.name === 'stats.connectionsByUniqueVisitors');
-			connectionsDividedUniqueVisitorsCacheIndicator.totalValue = connectionsDividedUniqueVisitorsTotalValue;
-			$scope.$apply();
-		}
-	}
-	
-	let initConnectionsWeeklyPeakTotalValue = async (entity: Entity) => {
-		let chartData: ChartDataGroupedByProfile = {};
-		const connectionsWeeklyPeakIndicator = entity.cacheData.indicators.find(indicator => indicator.name === 'stats.weeklyPeak');
-		let accountsData: Array<StatsResponse> = await statsApiService.getStats(
-			'accounts',
-			dateService.getSinceDateISOStringWithoutMs(),
-			'day',
-			entity.level,
-			[entity.id]
-		);
-		
-		if (accountsData && accountsData.length === 0) {
-			connectionsWeeklyPeakIndicator.totalValue = '-';
-			return;
-		}
-		
-		const dataGroupedByProfileAndDay = accountsData.reduce((acc, x) => {
-            if (!acc[x['profile']]) {
-                acc[x['profile']] = {};
-            }
-            (acc[x['profile']][new Date(x.date).getDay()] = acc[x['profile']][new Date(x.date).getDay()] || []).push(x['authentications']);
-            return acc;
-		}, {});
-		
-		Object.keys(dataGroupedByProfileAndDay).forEach(profile => {
-            chartData[profile] = [];
-            Object.keys(dataGroupedByProfileAndDay[profile]).forEach((day, i) => {
-                let sum = dataGroupedByProfileAndDay[profile][day].reduce((acc, x) => acc + x);
-                chartData[profile].push(sum);
-            });
-            // move Sunday value to the last array element
-            let sundayValue = chartData[profile].shift();
-            chartData[profile].push(sundayValue);
-		});
-		
-		const sumAll = [];
-		Object.keys(chartData).forEach(profile => {
-			if (sumAll.length === 0) {
-				sumAll.push(...chartData[profile]);
-			} else {
-				chartData[profile].forEach((sumDay, i) => sumAll[i] += sumDay);
-			}
-		});
-		const indexOfMaxValue = sumAll.reduce((iMax, x, i, arr) => x > arr[iMax] ? i : iMax, 0);
-		var daysMatch = [
-			'stats.monday',
-			'stats.tuesday',
-			'stats.wednesday',
-			'stats.thursday',
-			'stats.friday',
-			'stats.saturday',
-			'stats.sunday',
-		];
-		
-		// save value to Entity cache data
-		connectionsWeeklyPeakIndicator.totalValue = lang.translate(daysMatch[indexOfMaxValue]);
-	}
-	
-	let initConnectionsDailyPeakTotalValue = async (entity: Entity) => {
-		let chartData: ChartDataGroupedByProfile = {};
-		const connectionsDailyPeakIndicator = entity.cacheData.indicators.find(indicator => indicator.name === 'stats.dailyPeak');
-		
-		let accountsData: Array<StatsResponse> = await statsApiService.getStats(
-			'accounts',
-			dateService.getSinceDateISOStringWithoutMs(),
-			'hour',
-			entity.level,
-			[entity.id]
-		);
-		
-		if (accountsData && accountsData.length === 0) {
-			connectionsDailyPeakIndicator.totalValue = '-';
-			return;
-		}
-		
-		const dataGroupedByProfileAndDay = accountsData.reduce((acc, x) => {
-            if (!acc[x['profile']]) {
-                acc[x['profile']] = {};
-            }
-            (acc[x['profile']][new Date(x.date).getHours()] = acc[x['profile']][new Date(x.date).getHours()] || []).push(x['authentications']);
-            return acc;
-		}, {});
-		
-		Object.keys(dataGroupedByProfileAndDay).forEach(profile => {
-            chartData[profile] = [];
-            Object.keys(dataGroupedByProfileAndDay[profile]).forEach((day, i) => {
-                let sum = dataGroupedByProfileAndDay[profile][day].reduce((acc, x) => acc + x);
-                chartData[profile].push(sum);
-            });
-		});
-		
-		const sumAll = [];
-		Object.keys(chartData).forEach(profile => {
-			if (sumAll.length === 0) {
-				sumAll.push(...chartData[profile]);
-			} else {
-				chartData[profile].forEach((sumHours, i) => sumAll[i] += sumHours);
-			}
-		});
-		const indexOfMaxValue = sumAll.reduce((iMax, x, i, arr) => x > arr[iMax] ? i : iMax, 0);
-		
-		// save value to Entity cache data
-		connectionsDailyPeakIndicator.totalValue = indexOfMaxValue + 'h';
-	}
-	
-	let initMostUsedToolTotalValue = async (entity: Entity) => {
-		const mostUsedToolIndicator = entity.cacheData.indicators.find(indicator => indicator.name === 'stats.mostUsedTool');
-		
-		const dataGroupedByModuleAndProfile = statsApiService.groupByKeys(mostUsedToolIndicator.data, 'module', 'profile', 'access');
-		
-		let sumArray: Array<{module: string, total: number}> = [];
-		Object.keys(dataGroupedByModuleAndProfile).forEach(module => {
-			let sum = 0;
-			Object.keys(dataGroupedByModuleAndProfile[module]).forEach(profile => {
-				sum += dataGroupedByModuleAndProfile[module][profile].reduce((acc, x) => acc + x);
-			});
-			sumArray.push({module: module, total: sum});
-		});
-		
-		let max = 0;
-		sumArray.forEach(x => {
-			if (x.total > max) {
-				max = x.total;
-			}
-		});
-		
-		let moduleTotal = sumArray.find(x => x.total === max);
-		let app = '';
-		if (moduleTotal) {
-			app = lang.translate(moduleTotal.module.toLowerCase());
-		}
-		// save value to Entity cache data
-		mostUsedToolIndicator.totalValue = app;
-		
-	}
-	
 	let initData = async () => {
-		await initEntityMonthCacheData($scope.scopeEntity.current);
-		await initMostUsedToolTotalValue($scope.scopeEntity.current);
-		await initConnectionsDividedUniqueVisitorsTotalValue($scope.scopeEntity.current);
-		await initConnectionsWeeklyPeakTotalValue($scope.scopeEntity.current);
-		await initConnectionsDailyPeakTotalValue($scope.scopeEntity.current);
+		await cacheService.initEntityMonthCacheData($scope.indicators, $scope.scopeEntity.current);
+		await indicatorService.initConnectionsWeeklyPeakTotalValue($scope.scopeEntity.current);
+		await indicatorService.initConnectionsDailyPeakTotalValue($scope.scopeEntity.current);
+		indicatorService.initMostUsedToolTotalValue($scope.scopeEntity.current);
+		indicatorService.initConnectionsUniqueVisitorsTotalValue($scope.scopeEntity.current);
 		safeScopeApply();
 	}
 	
@@ -373,7 +154,11 @@ export const statsController = ng.controller('StatsController', ['$scope', '$tim
 		
 		switch(indicator.chartType){
 			case 'line':
-				$scope.chart = await chartService.getLineChart($scope.ctx, indicator, $scope.scopeEntity.current);
+				if (indicator.name === 'stats.connectionsByUniqueVisitors') {
+					$scope.chart = await chartService.getConnectionsUniqueVisitorsLineChart($scope.ctx, indicator, $scope.scopeEntity.current);
+				} else {
+					$scope.chart = await chartService.getLineChart($scope.ctx, indicator, $scope.scopeEntity.current);
+				}
 				break;
 			case 'stackedbar':
 				$scope.chart = await chartService.getStackedBarChart($scope.ctx, indicator, $scope.scopeEntity.current);

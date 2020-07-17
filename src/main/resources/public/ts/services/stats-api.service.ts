@@ -6,7 +6,7 @@ import { EntityLevel } from './entities.service';
 export interface StatsResponse {
     id: string;
     platform_id: string;
-    date: Date;
+    date: string;
     structure_id?: string;
     class_id?: string;
     profile: string;
@@ -106,6 +106,13 @@ export class StatsApiService {
                 acc[x[key1]] = {};
             }
             (acc[x[key1]][x[key2]] = acc[x[key1]][x[key2]] || []).push(x[attributeName]);
+            return acc;
+        }, {});
+    }
+    
+    public groupByProfileWithDate(data, attributeName: IndicatorApiType) {
+        return data.reduce((acc, x) => {
+            (acc[x['profile']] = acc[x['profile']] || []).push({date: new Date(x.date), value: x[attributeName]});
             return acc;
         }, {});
     }
