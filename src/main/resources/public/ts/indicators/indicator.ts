@@ -1,6 +1,19 @@
 import { Frequency, ChartType } from "../services/chart.service";
 
-export type IndicatorApi = 'accounts' | 'access';
+export type IndicatorName =
+    'stats.connections' |
+    'stats.uniqueVisitors' |
+    'stats.connectionsByUniqueVisitors' |
+    'stats.activatedAccounts' |
+    'stats.mostUsedApp' |
+    'stats.mostUsedConnector' |
+    'stats.dailyPeak' |
+    'stats.weeklyPeak';
+    
+export type IndicatorApi = 
+    'accounts' | 
+    'access';
+
 export type IndicatorApiType = 
     'authentications' | 
     'activations' | 
@@ -13,7 +26,7 @@ export type IndicatorApiType =
     'mixed';
 
 export type Indicator = {
-    name: string;
+    name: IndicatorName;
     api: IndicatorApi;
     apiType: IndicatorApiType;
     frequency: Frequency;

@@ -1,6 +1,6 @@
 import { dateService } from "./date.service";
 import { Entity } from "./entities.service";
-import { StatsResponse, statsApiService } from "./stats-api.service";
+import { StatsResponse, statsApiService, StatsAccessResponse } from "./stats-api.service";
 import { Frequency, ChartDataGroupedByProfile, ChartDataGroupedByProfileAndModule, ChartDataGroupedByProfileWithDate } from "./chart.service";
 import { Indicator } from "../indicators/indicator";
 
@@ -16,13 +16,13 @@ export class CacheService {
 			[entity.id]
 		);
 		// get accessData from API
-		let accessData: Array<StatsResponse> = await statsApiService.getStats(
+		let accessData: Array<StatsAccessResponse> = await statsApiService.getStats(
 			'access',
 			dateService.getSinceDateISOStringWithoutMs(),
 			'month',
 			entity.level,
 			[entity.id]
-		);
+		) as Array<StatsAccessResponse>;
 		// initialize entity cache data
 		entity.cacheData = {
 			indicators: [],
@@ -34,8 +34,11 @@ export class CacheService {
 			
 			if (indicator.api === 'accounts') {
 				data = accountsData;
-			} else if (indicator.api === 'access') {
-				data = accessData;
+			} else if (indicator.api === 'access' && indicator.name === 'stats.mostUsedApp') {
+				data = accessData.filter(x => x.type === 'ACCESS');
+			} else if (indicator.api === 'access' && indicator.name === 'stats.mostUsedConnector') {
+				// TODO replace by 'CONNECTOR' when API available
+				data = accessData.filter(x => x.type === 'ACCESS');
 			}
 			
 			let total: number = 0;

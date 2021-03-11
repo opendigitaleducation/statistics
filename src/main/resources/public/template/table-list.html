@@ -53,7 +53,7 @@
 		</div>
 		<!-- Group by profile -->
         <div class="chart-profilecriteria-container" ng-class="{'adjust-width-actvated-accounts': currentIndicator.name === 'stats.activatedAccounts'}" 
-            ng-if="currentIndicator.name === 'stats.mostUsedTool' || currentIndicator.name === 'stats.activatedAccounts'">
+            ng-if="showProfileFilter()">
             <div ng-repeat="profile in currentIndicator.chartProfiles">
                 <input type="radio" ng-model="currentIndicator.chartProfile" value="[[profile]]" ng-change="openIndicator(currentIndicator)">
                 <label>[[lang.translate('stats.'+profile.toLowerCase())]]</label>
@@ -61,14 +61,12 @@
         </div>
     </section>
 
-    <a ng-if="isCurrentIndicatorAccountDataExportable()"
-        ng-href="[[getExportUrl('accounts')]]" 
+    <a 
+        ng-if="isDataExportable()"
+        ng-href="[[getExportUrl()]]" 
 		translate content="stats.export" 
 		style="padding: 10px 0;" 
-		target="_blank"></a>
-    <a ng-if="isCurrentIndicatorAccessDataExportable()"
-        ng-href="[[getExportUrl('access')]]" 
-		translate content="stats.export" 
-		style="padding: 10px 0;" 
-		target="_blank"></a>
+		target="_blank"
+    >
+    </a>
 </article>

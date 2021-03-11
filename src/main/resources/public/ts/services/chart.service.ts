@@ -5,7 +5,7 @@ import { statsApiService } from '../services/stats-api.service';
 import { datasetService, Dataset } from "./dataset.service";
 import { cacheService } from "./cache.service";
 import { Indicator } from "../indicators/indicator";
-import { mostUsedToolIndicator } from "../indicators/bar.indicators";
+import { mostUsedAppsIndicator, mostUsedConnectorIndicator } from "../indicators/bar.indicators";
 import { connectionsIndicator, uniqueVisitorsIndicator } from "../indicators/line.indicators";
 import { connectionsDailyPeakIndicator, connectionsWeeklyPeakIndicator } from "../indicators/stackedbar.indicators";
 import { dateService } from "./date.service";
@@ -498,8 +498,11 @@ export class ChartService {
 		// get chart data from API or cache
 		let chartData: ChartDataGroupedByProfileAndModule;
 		switch (indicator.name) {
-			case 'stats.mostUsedTool':
-				chartData = await this.getMostUsedToolChartData(entity);
+			case 'stats.mostUsedApp':
+				chartData = await cacheService.getDataGroupedByProfileAndModule(mostUsedAppsIndicator, entity);;
+				break;
+			case 'stats.mostUsedConnector':
+				chartData = await cacheService.getDataGroupedByProfileAndModule(mostUsedConnectorIndicator, entity);
 				break;
 			default:
 				break;
@@ -526,14 +529,8 @@ export class ChartService {
 		}
 		datasets[0].data = sumData;
 		
-		let chartLabels: Array<string>;
-		switch (indicator.name) {
-			case 'stats.mostUsedTool':
-				chartLabels = await this.getMostUsedToolChartLabels(entity);
-				break;
-			default:
-				break;
-		}
+		// Chart labels
+		let chartLabels: Array<string> = await this.getBarChartLabels(entity);
 		
 		// sorting		
 		let labelAndDataArray: Array<{label: string, data: number}> = chartLabels.map((x, i) => {
@@ -638,8 +635,8 @@ export class ChartService {
 		}));
 	}
 	
-	private async getMostUsedToolChartLabels(entity: Entity): Promise<Array<string>> {
-        let chartData: ChartDataGroupedByProfileAndModule = await cacheService.getDataGroupedByProfileAndModule(mostUsedToolIndicator, entity);
+	private async getBarChartLabels(entity: Entity): Promise<Array<string>> {
+        let chartData: ChartDataGroupedByProfileAndModule = await cacheService.getDataGroupedByProfileAndModule(mostUsedAppsIndicator, entity);
         let labels = [];
 		Object.keys(chartData).forEach(profileKey => {
 			Object.keys(chartData[profileKey]).forEach(moduleKey => {
@@ -650,11 +647,6 @@ export class ChartService {
 			})
         });
         return labels;
-	}
-	
-	private async getMostUsedToolChartData(entity: Entity): Promise<ChartDataGroupedByProfileAndModule> {
-        let chartData: ChartDataGroupedByProfileAndModule = await cacheService.getDataGroupedByProfileAndModule(mostUsedToolIndicator, entity);
-        return chartData;
 	}
 	
 	private getConnectionsDailyPeakChartLabels(entity: Entity): Array<string> {

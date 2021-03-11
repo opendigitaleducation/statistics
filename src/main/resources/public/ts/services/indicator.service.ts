@@ -3,6 +3,7 @@ import { Entity } from "./entities.service";
 import { StatsAccountsResponse, statsApiService, StatsResponse } from "./stats-api.service";
 import { ChartDataGroupedByProfile } from "./chart.service";
 import { dateService } from "./date.service";
+import { IndicatorName } from "../indicators/indicator";
 
 export class IndicatorService {
 	
@@ -43,11 +44,18 @@ export class IndicatorService {
 			connectionsDividedUniqueVisitorsCacheIndicator.totalValue = Math.round(authenticationsTotalValue / uniqueVisitorsTotalValue);
 		}
     }
-    
-    public initMostUsedToolTotalValue(entity: Entity) {
-		const mostUsedToolIndicator = entity.cacheData.indicators.find(indicator => indicator.name === 'stats.mostUsedTool');
-		
-		const dataGroupedByModuleAndProfile = statsApiService.groupByKeys(mostUsedToolIndicator.data, 'module', 'profile', 'access');
+	
+	public initMostAccessedAppTotalValue(entity: Entity) {
+		return this.initMostAccessedTotalValue(entity, 'stats.mostUsedApp');
+	}
+	
+	public initMostAccessedConnectorTotalValue(entity: Entity) {
+		return this.initMostAccessedTotalValue(entity, 'stats.mostUsedConnector');
+	}
+	
+	private initMostAccessedTotalValue(entity: Entity, indicatorName: IndicatorName) {
+		const cachedIndicator = entity.cacheData.indicators.find(indicator => indicator.name === indicatorName);
+		const dataGroupedByModuleAndProfile = statsApiService.groupByKeys(cachedIndicator.data, 'module', 'profile', 'access');
 		
 		let sumArray: Array<{module: string, total: number}> = [];
 		Object.keys(dataGroupedByModuleAndProfile).forEach(module => {
@@ -71,8 +79,8 @@ export class IndicatorService {
 			app = lang.translate(moduleTotal.module.toLowerCase());
 		}
 		// save value to Entity cache data
-		mostUsedToolIndicator.totalValue = app;
-    }
+		cachedIndicator.totalValue = app;
+	}
     
     public async initConnectionsWeeklyPeakTotalValue(entity: Entity) {
 		let chartData: ChartDataGroupedByProfile = {};
